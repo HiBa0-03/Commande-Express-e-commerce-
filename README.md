@@ -41,5 +41,5 @@ Chaque domaine métier est isolé dans un microservice indépendant, avec **sa p
 
 ## 👩‍💻 Auteur
 
-Projet réalisé par *[Nom Prénom]* – EMSI – Ingénierie Informatique – Année universitaire 2026-2027.
-Encadrant : *[Nom du professeur]*
+Projet réalisé par *Hiba El khayat ,Assia Abouzraa ,Youssef elaissioui* – EMSI – Année universitaire 2026-2027.
+Encadrant : Salim KHALIL
