@@ -1,0 +1,18 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: service-commande
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/db_commande?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:J@wss12345/}
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update      # Hibernate crée / met à jour les tables à partir des entités
+    show-sql: true          # affiche le SQL généré dans la console
+    open-in-view: false

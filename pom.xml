@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Le parent Spring Boot gère les versions de toutes les dépendances -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.emsi</groupId>
+    <artifactId>commande-express</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>commande-express</name>
+    <description>Commande Express - plateforme e-commerce en microservices (jalon V1)</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <!-- Un module = un microservice indépendant (sa propre base de données) -->
+    <modules>
+        <module>service-catalogue</module>
+        <module>service-utilisateurs</module>
+        <module>service-stock</module>
+        <module>service-commande</module>
+    </modules>
+</project>

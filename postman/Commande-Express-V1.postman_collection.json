@@ -1,0 +1,861 @@
+{
+  "info": {
+    "name": "Commande Express - V1",
+    "description": "Tests des endpoints de la V1.\n\n- service-catalogue : http://localhost:8081 (CRUD Product)\n- service-utilisateurs : http://localhost:8082 (CRUD User)\n- service-stock (8083) et service-commande (8084) : entités préparées, AUCUN endpoint en V1.\n\nImporter ce fichier dans Postman, démarrer les services, puis lancer chaque dossier avec le Collection Runner (ordre des requêtes important). Quand l'API Gateway existera (jalon ultérieur), il suffira de changer les variables catalogueUrl / utilisateursUrl.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "service-catalogue (port 8081) - CRUD Product",
+      "description": "Lancer le scénario dans l'ordre (Runner) : création, erreurs, lecture, modification, suppression.",
+      "item": [
+        {
+          "name": "1. Créer un produit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{productRef}}\",\n  \"name\": \"Laptop Pro 15\",\n  \"description\": \"Ordinateur portable 15 pouces, 16 Go RAM\",\n  \"price\": 12999.9,\n  \"category\": \"Informatique\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crée un produit. Génère une référence unique et mémorise l'id dans {{productId}}."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"productRef\", \"REF-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Le produit a un id et la référence envoyée\", function () { pm.expect(b.id).to.be.a(\"number\"); pm.expect(b.reference).to.eql(pm.collectionVariables.get(\"productRef\")); pm.expect(b.createdAt).to.be.a(\"string\"); });",
+                  "pm.test(\"En-tête Location présent\", function () { pm.response.to.have.header(\"Location\"); });",
+                  "pm.collectionVariables.set(\"productId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Créer un produit - référence déjà utilisée (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{productRef}}\",\n  \"name\": \"Laptop Pro 15\",\n  \"description\": \"Ordinateur portable 15 pouces, 16 Go RAM\",\n  \"price\": 12999.9,\n  \"category\": \"Informatique\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Même référence que la requête 1 : doit être refusée."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 Conflict\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Créer un produit - données invalides (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"\",\n  \"name\": \"   \",\n  \"price\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Référence vide, nom blanc, prix négatif : la validation Jakarta liste chaque champ en erreur."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });",
+                  "pm.test(\"Détail des champs invalides\", function () { const v = pm.response.json().validationErrors; pm.expect(v).to.have.property(\"reference\"); pm.expect(v).to.have.property(\"name\"); pm.expect(v).to.have.property(\"price\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Créer un produit - JSON mal formé (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reference\": \"X\", ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Corps JSON incomplet."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Lister les produits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"La liste contient le produit créé\", function () { const l = pm.response.json(); pm.expect(l).to.be.an(\"array\"); pm.expect(l.map(p => p.id)).to.include(pm.collectionVariables.get(\"productId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Obtenir un produit par id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/{{productId}}",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Bon produit renvoyé\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"productId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Obtenir un produit inexistant (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/999999",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Obtenir un produit - id non numérique (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/abc",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Modifier un produit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/{{productId}}",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{productRef}}\",\n  \"name\": \"Laptop Pro 15 (v2)\",\n  \"description\": \"Version mise à jour\",\n  \"price\": 11999.0,\n  \"category\": \"Informatique\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Remplace toutes les données du produit {{productId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Données modifiées\", function () { const b = pm.response.json(); pm.expect(b.name).to.eql(\"Laptop Pro 15 (v2)\"); pm.expect(b.price).to.eql(11999); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Modifier un produit inexistant (404)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/999999",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{productRef}}\",\n  \"name\": \"Laptop Pro 15 (v2)\",\n  \"description\": \"Version mise à jour\",\n  \"price\": 11999.0,\n  \"category\": \"Informatique\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Supprimer un produit",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/{{productId}}",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Obtenir le produit supprimé (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogueUrl}}/products/{{productId}}",
+              "host": [
+                "{{catalogueUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "service-utilisateurs (port 8082) - CRUD User",
+      "description": "Lancer le scénario dans l'ordre (Runner).",
+      "item": [
+        {
+          "name": "1. Créer un utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sara\",\n  \"lastName\": \"Alaoui\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"+212 6 12 34 56 78\",\n  \"address\": \"12 rue des Orangers, Casablanca\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crée un utilisateur. Génère un email unique et mémorise l'id dans {{userId}}."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"userEmail\", \"user\" + Date.now() + \"@emsi.ma\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.test(\"L'utilisateur a un id et l'email envoyé\", function () { pm.expect(b.id).to.be.a(\"number\"); pm.expect(b.email).to.eql(pm.collectionVariables.get(\"userEmail\")); });",
+                  "pm.test(\"En-tête Location présent\", function () { pm.response.to.have.header(\"Location\"); });",
+                  "pm.collectionVariables.set(\"userId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Créer un utilisateur - email déjà utilisé (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sara\",\n  \"lastName\": \"Alaoui\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"+212 6 12 34 56 78\",\n  \"address\": \"12 rue des Orangers, Casablanca\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 Conflict\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Créer un utilisateur - données invalides (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"\",\n  \"lastName\": \"Alaoui\",\n  \"email\": \"pas-un-email\",\n  \"phone\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Prénom vide, email mal formé, téléphone invalide."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });",
+                  "pm.test(\"Détail des champs invalides\", function () { const v = pm.response.json().validationErrors; pm.expect(v).to.have.property(\"firstName\"); pm.expect(v).to.have.property(\"email\"); pm.expect(v).to.have.property(\"phone\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Lister les utilisateurs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"La liste contient l'utilisateur créé\", function () { const l = pm.response.json(); pm.expect(l).to.be.an(\"array\"); pm.expect(l.map(u => u.id)).to.include(pm.collectionVariables.get(\"userId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Obtenir un utilisateur par id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/{{userId}}",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Bon utilisateur renvoyé\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"userId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Obtenir un utilisateur inexistant (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/999999",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Modifier un utilisateur",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/{{userId}}",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sara\",\n  \"lastName\": \"Alaoui\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"+212 6 99 88 77 66\",\n  \"address\": \"5 avenue Hassan II, Rabat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Adresse modifiée\", function () { pm.expect(pm.response.json().address).to.eql(\"5 avenue Hassan II, Rabat\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Modifier un utilisateur inexistant (404)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/999999",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sara\",\n  \"lastName\": \"Alaoui\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"+212 6 99 88 77 66\",\n  \"address\": \"5 avenue Hassan II, Rabat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Supprimer un utilisateur",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/{{userId}}",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Obtenir l'utilisateur supprimé (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{utilisateursUrl}}/users/{{userId}}",
+              "host": [
+                "{{utilisateursUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Format d'erreur standard (timestamp, status, error, message, path)\", function () { const b = pm.response.json(); pm.expect(b).to.have.all.keys(\"timestamp\", \"status\", \"error\", \"message\", \"path\", \"validationErrors\"); pm.expect(b.status).to.eql(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "catalogueUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "utilisateursUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "productRef",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "userEmail",
+      "value": ""
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ (les configurations de lancement partagées dans .run/ sont conservées)
+.idea/
+*.iml
+*.iws
+out/
+
+# Divers
+*.log
+.DS_Store
+.env
+ postman/
+docs/
+
