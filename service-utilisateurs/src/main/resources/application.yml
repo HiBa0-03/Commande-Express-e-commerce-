@@ -12,5 +12,5 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update      # Hibernate crée / met à jour les tables à partir des entités
-    show-sql: true          # affiche le SQL généré dans la console
+    show-sql: true
     open-in-view: false

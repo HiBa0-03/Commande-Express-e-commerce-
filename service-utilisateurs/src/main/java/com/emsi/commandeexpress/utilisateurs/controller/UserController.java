@@ -20,9 +20,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
-/**
- * API REST des utilisateurs : reçoit les requêtes HTTP et délègue au service.
- */
 @RestController
 @RequestMapping("/users")
 public class UserController {

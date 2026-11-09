@@ -12,6 +12,6 @@ out/
 *.log
 .DS_Store
 .env
- postman/
+postman/
 docs/
 
